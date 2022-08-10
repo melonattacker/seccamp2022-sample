@@ -529,27 +529,27 @@ void noTone(int pin) {
  * getAngleOfCurrentPosition()は原点をゴールとし東をx軸方向、北をy軸方向とした際、x軸と原点から見たcansatの方向のなす角を度数[°]で返します
  */
 float getAngleOfCurrentPosition() {
-  float a = sensorVal.lat_rad_diff * cos(goal_lat);
+  float a = sensorVal.lat_rad_diff * cos(goal_lat_rad);
   float b = sensorVal.lng_rad_diff;
   float theta = atan(b/a);
   if (a < 0) {
     theta -= PI;
   }
 
-  Serial.println("----- デバッグ -----");
-  Serial.print("sensorVal.lat_rad_diff: ");
-  Serial.print(sensorVal.lat_rad_diff);
-  Serial.println("");
-  Serial.print("cos(goal_lat): ");
-  Serial.print(cos(goal_lat));
-  Serial.println("");
-  Serial.print("sensorVal.lng_rad_diff: ");
-  Serial.print(sensorVal.lng_rad_diff);
-  Serial.println("");
-  Serial.print("atan(b/a): ");
-  Serial.print(atan(b/a));
-  Serial.println("");
-  Serial.println("-----------------");
+  // Serial.println("----- デバッグ -----");
+  // Serial.print("sensorVal.lat_rad_diff: ");
+  // Serial.print(sensorVal.lat_rad_diff);
+  // Serial.println("");
+  // Serial.print("cos(goal_lat): ");
+  // Serial.print(cos(goal_lat));
+  // Serial.println("");
+  // Serial.print("sensorVal.lng_rad_diff: ");
+  // Serial.print(sensorVal.lng_rad_diff);
+  // Serial.println("");
+  // Serial.print("atan(b/a): ");
+  // Serial.print(atan(b/a));
+  // Serial.println("");
+  // Serial.println("-----------------");
 
   return toDegree(theta);
 }
@@ -558,7 +558,7 @@ float getAngleOfCurrentPosition() {
  * getDistanceToGoal()は現在地とゴールの間の距離[m]を返します
  */
 float getDistanceToGoal() {
-  float a = sensorVal.lat_rad_diff * cos(goal_lat);
+  float a = sensorVal.lat_rad_diff * cos(goal_lat_rad);
   float b = sensorVal.lng_rad_diff;
   return RADIUS_OF_THE_EARTH * sqrt(pow(a, 2.0) + pow(b, 2.0));
 }
