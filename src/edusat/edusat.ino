@@ -532,6 +532,9 @@ float getAngleOfCurrentPosition() {
   float a = sensorVal.lat_rad_diff * cos(goal_lat);
   float b = sensorVal.lng_rad_diff;
   float theta = atan(b/a);
+  if (a < 0) {
+    theta -= PI;
+  }
   return toDegree(theta);
 }
 
