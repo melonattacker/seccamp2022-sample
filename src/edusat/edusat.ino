@@ -125,12 +125,12 @@ void loop() {
   {
   case ST_STAND_BY:
     Serial.println("*** ST_STAND_BY ***");
+    printCurrentPosition();
     stand_by();
     break;
 
   case ST_DRIVE:
     Serial.println("*** ST_DRIVE ***");
-    printCurrentPosition();
     drive();
     break;
 
@@ -331,13 +331,16 @@ void drive() {
     if (d_r < 0) {
       // そのまま直進(つまりここでは何もしない)
     } else {
-      // 右か左に回転
+      // 右か左に大きく回転
+      right(50);
     }
   } else {
     if (d_theta > 0) {
       // 左回転
+      left(10);
     } else {
       // 右回転
+      right(10);
     }
   }
 
@@ -510,6 +513,28 @@ void stop() {
   digitalWrite(pin_motor_B[0], LOW);
   digitalWrite(pin_motor_B[1], LOW);
   ledcWrite(CHANNEL_B, HIGH);
+}
+
+/** 左回転 */
+void left(int pwm) {
+  if (pwm < 0) pwm = 0;
+  if (pwm > 255) pwm = 255;
+
+  // 左モータ（CCW 反時計回り）
+  digitalWrite(pin_motor_A[0], LOW);
+  digitalWrite(pin_motor_A[1], HIGH);
+  ledcWrite(CHANNEL_A, pwm);
+}
+
+/** 右回転 */
+void right(int pwm) {
+  if (pwm < 0) pwm = 0;
+  if (pwm > 255) pwm = 255;
+
+  // 右モータ（CW 時計回り）
+  digitalWrite(pin_motor_B[1], LOW);
+  digitalWrite(pin_motor_B[0], HIGH);
+  ledcWrite(CHANNEL_B, pwm);
 }
 
 /** SDカードに新規書き込みする */
