@@ -4,21 +4,23 @@
 #include "SPI.h"
 #include <obniz.h>
 #include <TinyGPSPlus.h>
-#include <math.h> /* cos/atan/sqrt/pow */
+#include <math.h> /* atan/sqrt/pow */
 
 // 円周率
 #define PI (3.14159265358979323846264338327950288)
 // 地球の半径 [m]
 #define RADIUS_OF_THE_EARTH (6378137)
 
-// ゴールの緯度。北緯 35.676960 [°]
-const float goal_lng = 35.676960;
-// ゴールの経度。東経 139.475372 [°]
-const float goal_lat = 139.475372;
-// ゴールの緯度のラジアン表記
-const float goal_lng_rad = 0.622680;
-// ゴールの経度のラジアン表記
-const float goal_lat_rad = 2.434304;
+// ゴールの緯度(北緯) [°]
+const float goal_lat = 35.676960;
+// ゴールの経度(東経) [°]
+const float goal_lng = 139.475372;
+// ゴールの緯度(北緯) [rad]
+const float goal_lat_rad = 0.622680;
+// ゴールの経度(東経) [rad]
+const float goal_lng_rad = 2.434304;
+// ゴールの半径 [m]
+const flaot L = 1.0;
 
 const float mC = 261.626; // ド
 const float mD = 293.665; // レ
@@ -71,11 +73,14 @@ struct SensorVal {
   float yaw;
   float lat;
   float lng;
-  float lat_rad;      // 現在地の経度 (ラジアン)
-  float lng_rad;      // 現在地の緯度 (ラジアン)
-  float lat_rad_diff; // 現在地の経度とゴールの経度の差 (ラジアン)
-  float lng_rad_diff; // 現在地の緯度とゴールの緯度の差 (ラジアン)
+  float lat_rad; // 現在地の緯度 [rad]
+  float lng_rad; // 現在地の経度 [rad]
 } sensorVal;
+
+struct MoveLog {
+  float last_theta; // 移動前の角度 [rad]
+  float last_r;     // 移動前のゴールまでの距離 [m]
+} moveLog;
 
 /** CanSatの状態遷移用の列挙型 */
 enum {
@@ -154,6 +159,22 @@ float toDegree(float radian) {
   return radian * (180 / PI);
 }
 
+/**
+ * calcD()はそのまま直進してゴールに辿り着けるかの判定式を計算します。
+ * D > 0 => 到達可能
+ * D <= 0 => 到達不可能
+ */
+float calcD(float r, float d_r, float d_theta) {
+  // 一旦D()は使わずにθの変化が小さくなったら直進とする
+  if (fabsf(toDegree(d_theta)) < 5) {
+    return 1;
+  } else {
+    return 0;
+  }
+
+  // return pow(d_r, 2.0) - (pow(L, 2.0) - 1) * pow(r, 2.0) * pow(d_theta, 2.0)
+}
+
 /** ボタンの割り込み関数 */
 void IRAM_ATTR onButton() {
   if (millis() > interrupt_prev_ms + 500) { // チャタリング防止
@@ -219,8 +240,6 @@ void updateGPSValTask(void *pvParameters) {
         sensorVal.lng = gps.location.lng();
         sensorVal.lat_rad = toRadian(gps.location.lat());
         sensorVal.lng_rad = toRadian(gps.location.lng());
-        sensorVal.lat_rad_diff = sensorVal.lat_rad - goal_lat_rad;
-        sensorVal.lng_rad_diff = sensorVal.lng_rad - goal_lng_rad;
       }
     }
     delay(100);
@@ -297,18 +316,40 @@ void stand_by() {
 
 /** 目標地点へ走行 */
 void drive() {
-  // forward(255);
-  // delay(5000);
-  // stop();
-  // delay(2000);
-  // back(100);
-  // delay(5000);
-  // stop();
-  // delay(2000);
+  float now_theta = getAngleOfCurrentPosition();
+  float now_r = getDistanceToGoal();
+  float d_r = now_r - moveLog.last_r;
+  float d_theta = now_theta - moveLog.last_theta;
+  float result = calcD(moveLog.last_r, d_r, d_theta);
+
+  if (now_r < 2*L) {
+    state = ST_GOAL;
+    return;
+  }
+
+  if (result > 0) {
+    if (d_r < 0) {
+      // そのまま直進(つまりここでは何もしない)
+    } else {
+      // 右か左に回転
+    }
+  } else {
+    if (d_theta > 0) {
+      // 左回転
+    } else {
+      // 右回転
+    }
+  }
+
+  moveLog.last_theta = getAngleOfCurrentPosition();
+  moveLog.last_r = getDistanceToGoal();
+  forward(255);
+  delay(5000);
 }
 
 /** 目標地点に到着 */
 void goal() {
+  stop();
 }
 
 /** ObnizOSの初期化処理 */
@@ -526,26 +567,40 @@ void noTone(int pin) {
 }
 
 /**
- * getAngleOfCurrentPosition()は原点をゴールとし東をx軸方向、北をy軸方向とした際、x軸と原点から見たcansatの方向のなす角を度数[°]で返します
+ * calcAngleOfCurrentPosition()は原点をゴールとし東をx軸方向、北をy軸方向とした際、x軸と原点から見た(lat_rad, lng_rad)の方向のなす角をラジアン[rad]で返します
  */
-float getAngleOfCurrentPosition() {
-  float a = sensorVal.lat_rad_diff * cos(goal_lng_rad);
-  float b = sensorVal.lng_rad_diff;
+float calcAngleOfCurrentPosition(float lat_rad, float lng_rad) {
+  float a = (lng_rad - goal_lng_rad) * cos(goal_lat_rad);
+  float b = lat_rad - goal_lat_rad;
   float theta = atan(b/a);
   if (a < 0) {
     theta -= PI;
   }
 
-  return toDegree(theta);
+  return theta;
+}
+
+/**
+ * getAngleOfCurrentPosition()は原点をゴールとし東をx軸方向、北をy軸方向とした際、x軸と原点から見たcansatの現在地の方向のなす角をラジアン[rad]で返します
+ */
+float getAngleOfCurrentPosition() {
+  return calcAngleOfCurrentPosition(sensorVal.lat_rad, sensorVal.lng_rad);
+}
+
+/**
+ * calcDistanceToGoal()は(lat_rad, lng_rad)とゴールの間の距離[m]を返します
+ */
+float calcDistanceToGoal(float lat_rad, float lng_rad) {
+  float a = (lng_rad - goal_lng_rad) * cos(goal_lat_rad);
+  float b = lat_rad - goal_lat_rad;
+  return RADIUS_OF_THE_EARTH * sqrt(pow(a, 2.0) + pow(b, 2.0));
 }
 
 /**
  * getDistanceToGoal()は現在地とゴールの間の距離[m]を返します
  */
 float getDistanceToGoal() {
-  float a = sensorVal.lat_rad_diff * cos(goal_lng_rad);
-  float b = sensorVal.lng_rad_diff;
-  return RADIUS_OF_THE_EARTH * sqrt(pow(a, 2.0) + pow(b, 2.0));
+  return calcDistanceToGoal(sensorVal.lat_rad, sensorVal.lng_rad);
 }
 
 // デバッグ用関数
@@ -565,10 +620,10 @@ float printCurrentPosition() {
   Serial.print(gps.location.lat());
   Serial.println(" [°]");
   Serial.print("東経: ");
-  Serial.print(sensorVal.lng = gps.location.lng());
+  Serial.print(gps.location.lng());
   Serial.println(" [°]");
   Serial.print("角度: ");
-  Serial.print(getAngleOfCurrentPosition());
+  Serial.print(toDegree(getAngleOfCurrentPosition()));
   Serial.println(" [°]");
   Serial.print("ゴールまでの距離: ");
   Serial.print(getDistanceToGoal());
