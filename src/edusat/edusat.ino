@@ -4,6 +4,7 @@
 #include "SPI.h"
 #include <obniz.h>
 #include <TinyGPSPlus.h>
+#include <math.h>
 
 const float mC = 261.626; // ド
 const float mD = 293.665; // レ
@@ -106,6 +107,7 @@ void loop() {
 
   case ST_DRIVE:
     Serial.println("*** ST_DRIVE ***");
+    calcAngleAgaintGoal();
     drive();
     break;
 
@@ -486,3 +488,40 @@ void tone(int pin, int freq, int t_ms) {
 void noTone(int pin) {
   ledcWriteTone(CHANNEL_C, 0.0);
 }
+
+
+/** ゴール地点の座標 : 緯度 35.676960, 経度 139.475372*/
+/** 緯度経度を取得する */
+
+float calcAngleAgaintGoal() {
+  float i_g, k_g;
+  i_g = 35.676960;
+  k_g = 139.475372;
+
+  float i_n, k_n;
+  i_n = sensorVal.lat;
+  k_n = sensorVal.lng;
+  Serial.print("in=\t"); Serial.println(i_n, 6);
+  Serial.print("kn=\t"); Serial.println(k_n, 6);
+
+  float a, b;
+  a = i_n - i_g;
+  b = k_n - k_g;
+  Serial.print("a=\t"); Serial.println(a, 6);
+  Serial.print("b=\t"); Serial.println(b, 6);
+
+  a = a * 180 / 3.14159265359;
+  b = b * 180 / 3.14159265359;
+  Serial.print("ua=\t"); Serial.println(a, 6);
+  Serial.print("ub=\t"); Serial.println(b, 6);
+
+  Serial.print("angle kakudo=\t");
+  Serial.println(acos(b / sqrt(a * a + b * b)) * 3.14159265359 / 180);
+
+  Serial.print("angle kodoho=\t");
+  Serial.println(acos(b / sqrt(a * a + b * b)));
+
+  return acos(b / sqrt(a * a + b * b));
+}
+
+/** 現在地点のゴール地点に対しての角度を計算する？ */
