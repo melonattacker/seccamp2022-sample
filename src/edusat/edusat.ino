@@ -541,7 +541,7 @@ float getAngleOfCurrentPosition() {
 float getDistanceToGoal() {
   float a = sensorVal.lat_rad_diff * cos(goal_lat);
   float b = sensorVal.lng_rad_diff;
-  return RADIUS_OF_THE_EARTH * sqrt(pow(a, 2.0), pow(b, 2.0));
+  return RADIUS_OF_THE_EARTH * sqrt(pow(a, 2.0) + pow(b, 2.0));
 }
 
 // デバッグ用関数
@@ -559,15 +559,15 @@ float printCurrentPosition() {
   Serial.println("----- 現在地情報 -----");
   Serial.print("北緯: ");
   Serial.print(gps.location.lat());
-  Serial.prinln(" [°]");
+  Serial.println(" [°]");
   Serial.print("東経: ");
   Serial.print(sensorVal.lng = gps.location.lng());
-  Serial.prinln(" [°]");
+  Serial.println(" [°]");
   Serial.print("角度: ");
   Serial.print(getAngleOfCurrentPosition());
-  Serial.prinln(" [°]");
+  Serial.println(" [°]");
   Serial.print("ゴールまでの距離: ");
   Serial.print(getDistanceToGoal());
-  Serial.prinln(" [m]");
+  Serial.println(" [m]");
   Serial.println("-----------------");
 }
