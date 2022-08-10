@@ -20,7 +20,7 @@ const float goal_lat_rad = 0.622680;
 // ゴールの経度(東経) [rad]
 const float goal_lng_rad = 2.434304;
 // ゴールの半径 [m]
-const flaot L = 1.0;
+const float L = 1.0;
 
 const float mC = 261.626; // ド
 const float mD = 293.665; // レ
