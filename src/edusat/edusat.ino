@@ -12,13 +12,13 @@
 #define RADIUS_OF_THE_EARTH (6378137)
 
 // ゴールの緯度。北緯 35.676960 [°]
-const float goal_lat = 35.676960;
+const float goal_lng = 35.676960;
 // ゴールの経度。東経 139.475372 [°]
-const float goal_lng = 139.475372;
+const float goal_lat = 139.475372;
 // ゴールの緯度のラジアン表記
-const float goal_lat_rad = 0.622680;
+const float goal_lng_rad = 0.622680;
 // ゴールの経度のラジアン表記
-const float goal_lng_rad = 2.434304;
+const float goal_lat_rad = 2.434304;
 
 const float mC = 261.626; // ド
 const float mD = 293.665; // レ
@@ -472,7 +472,7 @@ void stop() {
 }
 
 /** SDカードに新規書き込みする */
- void writeFile(fs::FS &fs, const char *path, const char *message) {
+void writeFile(fs::FS &fs, const char *path, const char *message) {
   Serial.printf("Writing file: %s\n", path);
 
   File file = fs.open(path, FILE_WRITE);
@@ -535,21 +535,6 @@ float getAngleOfCurrentPosition() {
   if (a < 0) {
     theta -= PI;
   }
-
-  // Serial.println("----- デバッグ -----");
-  // Serial.print("sensorVal.lat_rad_diff: ");
-  // Serial.print(sensorVal.lat_rad_diff);
-  // Serial.println("");
-  // Serial.print("cos(goal_lat): ");
-  // Serial.print(cos(goal_lat));
-  // Serial.println("");
-  // Serial.print("sensorVal.lng_rad_diff: ");
-  // Serial.print(sensorVal.lng_rad_diff);
-  // Serial.println("");
-  // Serial.print("atan(b/a): ");
-  // Serial.print(atan(b/a));
-  // Serial.println("");
-  // Serial.println("-----------------");
 
   return toDegree(theta);
 }
