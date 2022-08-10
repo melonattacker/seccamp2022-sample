@@ -9,7 +9,7 @@
 // 円周率
 #define PI (3.14159265358979323846264338327950288)
 // 地球の半径 [m]
-#define RADIUS_OF_THE_EARTH (149597870700)
+#define RADIUS_OF_THE_EARTH (6371000)
 
 // ゴールの緯度。北緯 35.676960 [°]
 const float goal_lat = 35.676960;
@@ -125,7 +125,7 @@ void loop() {
 
   case ST_DRIVE:
     Serial.println("*** ST_DRIVE ***");
-    printCurrentPosition()
+    printCurrentPosition();
     drive();
     break;
 
@@ -219,7 +219,7 @@ void updateGPSValTask(void *pvParameters) {
         sensorVal.lng = gps.location.lng();
         sensorVal.lat_rad = toRadian(gps.location.lat());
         sensorVal.lng_rad = toRadian(gps.location.lng());
-        sensorVal.lad_rad_diff = sensorVal.lat_rad - goal_lat_rad;
+        sensorVal.lat_rad_diff = sensorVal.lat_rad - goal_lat_rad;
         sensorVal.lng_rad_diff = sensorVal.lng_rad - goal_lng_rad;
       }
     }
@@ -555,15 +555,15 @@ float printCurrentPosition() {
   Serial.println("----- 現在地情報 -----");
   Serial.print("北緯: ");
   Serial.print(gps.location.lat());
-  Serial.prinln(" [°]")
+  Serial.prinln(" [°]");
   Serial.print("東経: ");
   Serial.print(sensorVal.lng = gps.location.lng());
-  Serial.prinln(" [°]")
+  Serial.prinln(" [°]");
   Serial.print("角度: ");
   Serial.print(getAngleOfCurrentPosition());
-  Serial.prinln(" [°]")
+  Serial.prinln(" [°]");
   Serial.print("ゴールまでの距離: ");
   Serial.print(getDistanceToGoal());
-  Serial.prinln(" [m]")
+  Serial.prinln(" [m]");
   Serial.println("-----------------");
 }
