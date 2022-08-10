@@ -297,14 +297,14 @@ void stand_by() {
 
 /** 目標地点へ走行 */
 void drive() {
-  forward(255);
-  delay(5000);
-  stop();
-  delay(2000);
-  back(100);
-  delay(5000);
-  stop();
-  delay(2000);
+  // forward(255);
+  // delay(5000);
+  // stop();
+  // delay(2000);
+  // back(100);
+  // delay(5000);
+  // stop();
+  // delay(2000);
 }
 
 /** 目標地点に到着 */
@@ -535,6 +535,22 @@ float getAngleOfCurrentPosition() {
   if (a < 0) {
     theta -= PI;
   }
+
+  Serial.println("----- デバッグ -----");
+  Serial.print("sensorVal.lat_rad_diff: ");
+  Serial.print(sensorVal.lat_rad_diff);
+  Serial.println("");
+  Serial.print("cos(goal_lat): ");
+  Serial.print(cos(goal_lat));
+  Serial.println("");
+  Serial.print("sensorVal.lng_rad_diff: ");
+  Serial.print(sensorVal.lng_rad_diff);
+  Serial.println("");
+  Serial.print("atan(b/a): ");
+  Serial.print(atan(b/a));
+  Serial.println("");
+  Serial.println("-----------------");
+
   return toDegree(theta);
 }
 
