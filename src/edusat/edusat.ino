@@ -4,12 +4,12 @@
 #include "SPI.h"
 #include <obniz.h>
 #include <TinyGPSPlus.h>
-#include <math.h> /* atan/sqrt/pow */
+#include <math.h> /* cos/atan/sqrt/pow */
 
 // 円周率
 #define PI (3.14159265358979323846264338327950288)
 // 地球の半径 [m]
-#define RADIUS_OF_THE_EARTH (6371000)
+#define RADIUS_OF_THE_EARTH (6378137)
 
 // ゴールの緯度。北緯 35.676960 [°]
 const float goal_lat = 35.676960;
@@ -529,7 +529,9 @@ void noTone(int pin) {
  * getAngleOfCurrentPosition()は原点をゴールとし東をx軸方向、北をy軸方向とした際、x軸と原点から見たcansatの方向のなす角を度数[°]で返します
  */
 float getAngleOfCurrentPosition() {
-  float theta = atan(sensorVal.lng_rad_diff/sensorVal.lat_rad_diff);
+  float a = sensorVal.lat_rad_diff * cos(goal_lat);
+  float b = sensorVal.lng_rad_diff;
+  float theta = atan(b/a);
   return toDegree(theta);
 }
 
@@ -537,7 +539,9 @@ float getAngleOfCurrentPosition() {
  * getDistanceToGoal()は現在地とゴールの間の距離[m]を返します
  */
 float getDistanceToGoal() {
-  return RADIUS_OF_THE_EARTH * sqrt(pow(sensorVal.lat_rad_diff, 2.0), pow(sensorVal.lat_rad_diff, 2.0));
+  float a = sensorVal.lat_rad_diff * cos(goal_lat);
+  float b = sensorVal.lng_rad_diff;
+  return RADIUS_OF_THE_EARTH * sqrt(pow(a, 2.0), pow(b, 2.0));
 }
 
 // デバッグ用関数
