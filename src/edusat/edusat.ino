@@ -340,7 +340,7 @@ void drive() {
   Serial.println(" []");
   Serial.println("-----------------");
 
-  if (now_r < 2*L) {
+  if (now_r < L) {
     state = ST_GOAL;
     return;
   }
