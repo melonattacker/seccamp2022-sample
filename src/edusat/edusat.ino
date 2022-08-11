@@ -322,6 +322,24 @@ void drive() {
   float d_theta = now_theta - moveLog.last_theta;
   float result = calcD(moveLog.last_r, d_r, d_theta);
 
+  Serial.println("----- 情報 -----");
+  Serial.print("now_theta: ");
+  Serial.print(now_theta);
+  Serial.println(" [rad]");
+  Serial.print("now_r: ");
+  Serial.print(now_r);
+  Serial.println(" [m]");
+  Serial.print("d_r: ");
+  Serial.print(d_r);
+  Serial.println(" [m]");
+  Serial.print("d_theta: ");
+  Serial.print(d_theta);
+  Serial.println(" [rad]");
+  Serial.print("result: ");
+  Serial.print(result);
+  Serial.println(" []");
+  Serial.println("-----------------");
+
   if (now_r < 2*L) {
     state = ST_GOAL;
     return;
@@ -330,17 +348,21 @@ void drive() {
   if (result > 0) {
     if (d_r < 0) {
       // そのまま直進(つまりここでは何もしない)
+      Serial.println("直進: 1");
     } else {
+      Serial.println("大きく回転: 2");
       // 右か左に大きく回転
       right(255);
       delay(400);
     }
   } else {
     if (d_theta > 0) {
+      Serial.println("左回転: 3");
       // 左回転
       left(255);
       delay(200);
     } else {
+      Serial.println("右回転: 4");
       // 右回転
       right(255);
       delay(200);
