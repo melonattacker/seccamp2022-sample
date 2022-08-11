@@ -484,7 +484,8 @@ void mpu_init() {
   // キャリブレーション中はCanSatをぐるぐる回転させる
   beep(beep_start, sizeof(beep_start) / sizeof(float), 150);
   delay(500);
-  mpu.calibrateMag();
+  // mpu.calibrateMag();
+  Serial.println("mpu.calibrateMag() skipped");
   beep(beep_end, sizeof(beep_end) / sizeof(float), 150);
 
   mpu.verbose(false);
