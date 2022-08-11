@@ -242,7 +242,7 @@ void updateGPSValTask(void *pvParameters) {
         sensorVal.lng_rad = toRadian(gps.location.lng());
       }
     }
-    delay(100);
+    delay(10);
   }
 }
 
