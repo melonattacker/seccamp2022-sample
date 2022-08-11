@@ -342,7 +342,7 @@ void drive() {
       delay(200);
     } else {
       // 右回転
-      right(10);
+      right(255);
       delay(200);
     }
   }
