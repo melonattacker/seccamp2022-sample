@@ -332,22 +332,25 @@ void drive() {
       // そのまま直進(つまりここでは何もしない)
     } else {
       // 右か左に大きく回転
-      right(50);
+      right(255);
+      delay(400);
     }
   } else {
     if (d_theta > 0) {
       // 左回転
-      left(10);
+      left(255);
+      delay(200);
     } else {
       // 右回転
       right(10);
+      delay(200);
     }
   }
 
   moveLog.last_theta = getAngleOfCurrentPosition();
   moveLog.last_r = getDistanceToGoal();
   forward(255);
-  delay(5000);
+  delay(200);
 }
 
 /** 目標地点に到着 */
@@ -515,8 +518,8 @@ void stop() {
   ledcWrite(CHANNEL_B, HIGH);
 }
 
-/** 左回転 */
-void left(int pwm) {
+/** 右回転 */
+void right(int pwm) {
   if (pwm < 0) pwm = 0;
   if (pwm > 255) pwm = 255;
 
@@ -526,8 +529,8 @@ void left(int pwm) {
   ledcWrite(CHANNEL_A, pwm);
 }
 
-/** 右回転 */
-void right(int pwm) {
+/** 左回転 */
+void left(int pwm) {
   if (pwm < 0) pwm = 0;
   if (pwm > 255) pwm = 255;
 
