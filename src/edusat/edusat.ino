@@ -4,6 +4,23 @@
 #include "SPI.h"
 #include <obniz.h>
 #include <TinyGPSPlus.h>
+#include <math.h> /* atan/sqrt/pow */
+
+// 円周率
+#define PI (3.14159265358979323846264338327950288)
+// 地球の半径 [m]
+#define RADIUS_OF_THE_EARTH (6378137)
+
+// ゴールの緯度(北緯) [°]
+const float goal_lat = 35.676960;
+// ゴールの経度(東経) [°]
+const float goal_lng = 139.475372;
+// ゴールの緯度(北緯) [rad]
+const float goal_lat_rad = 0.622680;
+// ゴールの経度(東経) [rad]
+const float goal_lng_rad = 2.434304;
+// ゴールの半径 [m]
+const float L = 1.0;
 
 const float mC = 261.626; // ド
 const float mD = 293.665; // レ
@@ -41,7 +58,7 @@ const uint8_t pin_gps_rx     = 17;
 const int CHANNEL_A = 0; // PWMA
 const int CHANNEL_B = 1; // PWMB
 const int CHANNEL_C = 2; // Speaker
- 
+
 const int LEDC_TIMER_8_BIT    = 8;
 const int LEDC_TIMER_13_BIT   = 13;
 const int LEDC_BASE_FREQ_490  = 490;
@@ -56,7 +73,14 @@ struct SensorVal {
   float yaw;
   float lat;
   float lng;
+  float lat_rad; // 現在地の緯度 [rad]
+  float lng_rad; // 現在地の経度 [rad]
 } sensorVal;
+
+struct MoveLog {
+  float last_theta; // 移動前の角度 [rad]
+  float last_r;     // 移動前のゴールまでの距離 [m]
+} moveLog;
 
 /** CanSatの状態遷移用の列挙型 */
 enum {
@@ -101,6 +125,7 @@ void loop() {
   {
   case ST_STAND_BY:
     Serial.println("*** ST_STAND_BY ***");
+    printCurrentPosition();
     stand_by();
     break;
 
@@ -113,11 +138,41 @@ void loop() {
     Serial.println("*** ST_GOAL ***");
     goal();
     break;
-  
+
   default:
     break;
   }
   delay(200);
+}
+
+/**
+ * toRadian()は度数degreeをラジアンに変換します
+ */
+float toRadian(float degree) {
+  return degree * (PI / 180);
+}
+
+/**
+ * toDegree()はラジアンradianを度数に変換します
+ */
+float toDegree(float radian) {
+  return radian * (180 / PI);
+}
+
+/**
+ * calcD()はそのまま直進してゴールに辿り着けるかの判定式を計算します。
+ * D > 0 => 到達可能
+ * D <= 0 => 到達不可能
+ */
+float calcD(float r, float d_r, float d_theta) {
+  // 一旦D()は使わずにθの変化が小さくなったら直進とする
+  if (fabsf(toDegree(d_theta)) < 5) {
+    return 1;
+  } else {
+    return 0;
+  }
+
+  // return pow(d_r, 2.0) - (pow(L, 2.0) - 1) * pow(r, 2.0) * pow(d_theta, 2.0)
 }
 
 /** ボタンの割り込み関数 */
@@ -183,9 +238,11 @@ void updateGPSValTask(void *pvParameters) {
       if (gps.location.isUpdated()) {
         sensorVal.lat = gps.location.lat();
         sensorVal.lng = gps.location.lng();
+        sensorVal.lat_rad = toRadian(gps.location.lat());
+        sensorVal.lng_rad = toRadian(gps.location.lng());
       }
     }
-    delay(5000);
+    delay(10);
   }
 }
 
@@ -259,18 +316,68 @@ void stand_by() {
 
 /** 目標地点へ走行 */
 void drive() {
+  float now_theta = getAngleOfCurrentPosition();
+  float now_r = getDistanceToGoal();
+  float d_r = now_r - moveLog.last_r;
+  float d_theta = now_theta - moveLog.last_theta;
+  float result = calcD(moveLog.last_r, d_r, d_theta);
+
+  Serial.println("----- 情報 -----");
+  Serial.print("now_theta: ");
+  Serial.print(now_theta);
+  Serial.println(" [rad]");
+  Serial.print("now_r: ");
+  Serial.print(now_r);
+  Serial.println(" [m]");
+  Serial.print("d_r: ");
+  Serial.print(d_r);
+  Serial.println(" [m]");
+  Serial.print("d_theta: ");
+  Serial.print(d_theta);
+  Serial.println(" [rad]");
+  Serial.print("result: ");
+  Serial.print(result);
+  Serial.println(" []");
+  Serial.println("-----------------");
+
+  if (now_r < L) {
+    state = ST_GOAL;
+    return;
+  }
+
+  if (result > 0) {
+    if (d_r < 0) {
+      // そのまま直進(つまりここでは何もしない)
+      Serial.println("直進: 1");
+    } else {
+      Serial.println("大きく回転: 2");
+      // 右か左に大きく回転
+      right(255);
+      delay(400);
+    }
+  } else {
+    if (d_theta > 0) {
+      Serial.println("左回転: 3");
+      // 左回転
+      left(255);
+      delay(200);
+    } else {
+      Serial.println("右回転: 4");
+      // 右回転
+      right(255);
+      delay(200);
+    }
+  }
+
+  moveLog.last_theta = getAngleOfCurrentPosition();
+  moveLog.last_r = getDistanceToGoal();
   forward(255);
-  delay(5000);
-  stop();
-  delay(2000);
-  back(100);
-  delay(5000);
-  stop();
-  delay(2000);
+  delay(200);
 }
 
 /** 目標地点に到着 */
 void goal() {
+  stop();
 }
 
 /** ObnizOSの初期化処理 */
@@ -377,7 +484,8 @@ void mpu_init() {
   // キャリブレーション中はCanSatをぐるぐる回転させる
   beep(beep_start, sizeof(beep_start) / sizeof(float), 150);
   delay(500);
-  mpu.calibrateMag();
+  // mpu.calibrateMag();
+  Serial.println("mpu.calibrateMag() skipped");
   beep(beep_end, sizeof(beep_end) / sizeof(float), 150);
 
   mpu.verbose(false);
@@ -433,8 +541,30 @@ void stop() {
   ledcWrite(CHANNEL_B, HIGH);
 }
 
+/** 右回転 */
+void right(int pwm) {
+  if (pwm < 0) pwm = 0;
+  if (pwm > 255) pwm = 255;
+
+  // 左モータ（CCW 反時計回り）
+  digitalWrite(pin_motor_A[0], LOW);
+  digitalWrite(pin_motor_A[1], HIGH);
+  ledcWrite(CHANNEL_A, pwm);
+}
+
+/** 左回転 */
+void left(int pwm) {
+  if (pwm < 0) pwm = 0;
+  if (pwm > 255) pwm = 255;
+
+  // 右モータ（CW 時計回り）
+  digitalWrite(pin_motor_B[1], LOW);
+  digitalWrite(pin_motor_B[0], HIGH);
+  ledcWrite(CHANNEL_B, pwm);
+}
+
 /** SDカードに新規書き込みする */
- void writeFile(fs::FS &fs, const char *path, const char *message) {
+void writeFile(fs::FS &fs, const char *path, const char *message) {
   Serial.printf("Writing file: %s\n", path);
 
   File file = fs.open(path, FILE_WRITE);
@@ -485,4 +615,69 @@ void tone(int pin, int freq, int t_ms) {
 
 void noTone(int pin) {
   ledcWriteTone(CHANNEL_C, 0.0);
+}
+
+/**
+ * calcAngleOfCurrentPosition()は原点をゴールとし東をx軸方向、北をy軸方向とした際、x軸と原点から見た(lat_rad, lng_rad)の方向のなす角をラジアン[rad]で返します
+ */
+float calcAngleOfCurrentPosition(float lat_rad, float lng_rad) {
+  float a = (lng_rad - goal_lng_rad) * cos(goal_lat_rad);
+  float b = lat_rad - goal_lat_rad;
+  float theta = atan(b/a);
+  if (a < 0) {
+    theta -= PI;
+  }
+
+  return theta;
+}
+
+/**
+ * getAngleOfCurrentPosition()は原点をゴールとし東をx軸方向、北をy軸方向とした際、x軸と原点から見たcansatの現在地の方向のなす角をラジアン[rad]で返します
+ */
+float getAngleOfCurrentPosition() {
+  return calcAngleOfCurrentPosition(sensorVal.lat_rad, sensorVal.lng_rad);
+}
+
+/**
+ * calcDistanceToGoal()は(lat_rad, lng_rad)とゴールの間の距離[m]を返します
+ */
+float calcDistanceToGoal(float lat_rad, float lng_rad) {
+  float a = (lng_rad - goal_lng_rad) * cos(goal_lat_rad);
+  float b = lat_rad - goal_lat_rad;
+  return RADIUS_OF_THE_EARTH * sqrt(pow(a, 2.0) + pow(b, 2.0));
+}
+
+/**
+ * getDistanceToGoal()は現在地とゴールの間の距離[m]を返します
+ */
+float getDistanceToGoal() {
+  return calcDistanceToGoal(sensorVal.lat_rad, sensorVal.lng_rad);
+}
+
+// デバッグ用関数
+
+/**
+ * printCurrentPosition()は現在地情報(北緯, 東経, ゴールまでの距離)を以下のフォーマットでシリアルポートに出力します
+ * ----- 現在地情報 -----
+ * 北緯: 35.676960 [°]
+ * 東経: 139.475372 [°]
+ * 角度: 40.000001 [°]
+ * ゴールまでの距離: 10.000001 [m]
+ * -----------------
+ */
+float printCurrentPosition() {
+  Serial.println("----- 現在地情報 -----");
+  Serial.print("北緯: ");
+  Serial.print(gps.location.lat());
+  Serial.println(" [°]");
+  Serial.print("東経: ");
+  Serial.print(gps.location.lng());
+  Serial.println(" [°]");
+  Serial.print("角度: ");
+  Serial.print(toDegree(getAngleOfCurrentPosition()));
+  Serial.println(" [°]");
+  Serial.print("ゴールまでの距離: ");
+  Serial.print(getDistanceToGoal());
+  Serial.println(" [m]");
+  Serial.println("-----------------");
 }
